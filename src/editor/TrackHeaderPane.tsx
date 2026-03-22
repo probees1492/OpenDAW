@@ -1,11 +1,18 @@
 import { useEditorState } from "../state/EditorStateProvider";
 
 export function TrackHeaderPane() {
-  const { session } = useEditorState();
+  const { session, addTrack } = useEditorState();
 
   return (
     <aside className="track-header-pane">
-      <button className="primary-button add-track-button">Add track</button>
+      <div className="add-track-actions">
+        <button className="primary-button add-track-button" onClick={() => addTrack("Audio")}>
+          Add audio
+        </button>
+        <button className="secondary-button add-track-button" onClick={() => addTrack("MIDI")}>
+          Add MIDI
+        </button>
+      </div>
       <div className="track-list">
         {session.tracks.map((track) => (
           <article key={track.id} className="track-row">

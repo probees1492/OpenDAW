@@ -22,6 +22,10 @@ export function TimelineViewport() {
     resizeClip,
     deleteSelectedClips,
     duplicateSelectedClips,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     setPlayheadBar,
     getClipById,
   } = useEditorState();
@@ -111,6 +115,19 @@ export function TimelineViewport() {
         duplicateSelectedClips();
       }
 
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+      }
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        ((event.shiftKey && event.key.toLowerCase() === "z") || event.key.toLowerCase() === "y")
+      ) {
+        event.preventDefault();
+        redo();
+      }
+
       if (event.key === "Escape") {
         clearSelection();
       }
@@ -118,7 +135,7 @@ export function TimelineViewport() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [clearSelection, deleteSelectedClips, duplicateSelectedClips]);
+  }, [clearSelection, deleteSelectedClips, duplicateSelectedClips, redo, undo]);
 
   return (
     <section className="timeline-viewport">
@@ -266,6 +283,9 @@ export function TimelineViewport() {
             then drag to move them together.
           </span>
         )}
+        <span className="timeline-shortcuts">
+          Undo {canUndo ? "available" : "empty"} · Redo {canRedo ? "available" : "empty"}
+        </span>
       </footer>
     </section>
   );

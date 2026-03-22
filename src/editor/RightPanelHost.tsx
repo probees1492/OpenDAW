@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useEditorState } from "../state/EditorStateProvider";
 
 export function RightPanelHost() {
-  const { session, selectedClipIds, getClipById } = useEditorState();
+  const { session, selectedClipIds, getClipById, addComment } = useEditorState();
+  const [commentDraft, setCommentDraft] = useState("");
   const selectedClip = selectedClipIds[0] ? getClipById(selectedClipIds[0]) : undefined;
 
   return (
@@ -9,6 +11,24 @@ export function RightPanelHost() {
       <section className="panel-card">
         <p className="eyebrow">Comments</p>
         <h2>Review thread</h2>
+        <form
+          className="comment-composer"
+          onSubmit={(event) => {
+            event.preventDefault();
+            addComment(commentDraft);
+            setCommentDraft("");
+          }}
+        >
+          <textarea
+            value={commentDraft}
+            onChange={(event) => setCommentDraft(event.target.value)}
+            placeholder={`Add a note at ${session.playhead}`}
+            rows={3}
+          />
+          <button className="primary-button" type="submit">
+            Add comment
+          </button>
+        </form>
         <ul className="thread-list">
           {session.comments.length > 0 ? (
             session.comments.map((comment) => (
@@ -21,7 +41,7 @@ export function RightPanelHost() {
           ) : (
             <li>
               <strong>No comments yet</strong>
-              <p>Share the session or add the first review note from the timeline.</p>
+              <p>Share the session or add the first review note from the current playhead.</p>
             </li>
           )}
         </ul>

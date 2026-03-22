@@ -283,6 +283,12 @@ button {
   gap: 16px;
 }
 
+.add-track-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .track-list {
   display: grid;
   gap: 10px;
@@ -479,7 +485,15 @@ button {
 }
 
 .timeline-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   color: #b4b9c0;
+}
+
+.timeline-shortcuts {
+  color: #8ea3b5;
 }
 
 .auth-footer {
@@ -500,6 +514,22 @@ button {
   padding: 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
+}
+
+.comment-composer {
+  display: grid;
+  gap: 10px;
+}
+
+.comment-composer textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
 }
 
 .bottom-panel {
