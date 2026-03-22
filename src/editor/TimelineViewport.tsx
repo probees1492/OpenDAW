@@ -18,8 +18,11 @@ export function TimelineViewport() {
     clearSelection,
     startDrag,
     stopDrag,
-    moveClip,
+    moveSelectedClips,
     resizeClip,
+    deleteSelectedClips,
+    duplicateSelectedClips,
+    setPlayheadBar,
     getClipById,
   } = useEditorState();
 
@@ -29,10 +32,11 @@ export function TimelineViewport() {
         track.clips.map((clip) => clip.start + clip.length),
       ),
       VISIBLE_BARS,
+      session.loopRange.end + 1,
     );
 
     return Math.ceil(maxClipEnd + 1);
-  }, [session.tracks]);
+  }, [session.loopRange.end, session.tracks]);
 
   useEffect(() => {
     if (!dragState) {
@@ -47,22 +51,27 @@ export function TimelineViewport() {
       );
 
       if (activeDragState.mode === "move") {
-        moveClip(activeDragState.clipId, activeDragState.initialStart + deltaBars);
+        moveSelectedClips(deltaBars);
+        return;
+      }
+
+      const initial = activeDragState.initialPositions[0];
+      if (!initial) {
         return;
       }
 
       if (activeDragState.mode === "resize-start") {
-        const nextStart = activeDragState.initialStart + deltaBars;
-        const end = activeDragState.initialStart + activeDragState.initialLength;
+        const nextStart = initial.start + deltaBars;
+        const end = initial.start + initial.length;
         const boundedStart = Math.min(end - MIN_CLIP_LENGTH, nextStart);
         resizeClip(activeDragState.clipId, boundedStart, end - boundedStart);
         return;
       }
 
-      const nextLength = activeDragState.initialLength + deltaBars;
+      const nextLength = initial.length + deltaBars;
       resizeClip(
         activeDragState.clipId,
-        activeDragState.initialStart,
+        initial.start,
         Math.max(MIN_CLIP_LENGTH, nextLength),
       );
     }
@@ -78,22 +87,75 @@ export function TimelineViewport() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [dragState, moveClip, resizeClip, stopDrag]);
+  }, [dragState, moveSelectedClips, resizeClip, stopDrag]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteSelectedClips();
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        duplicateSelectedClips();
+      }
+
+      if (event.key === "Escape") {
+        clearSelection();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [clearSelection, deleteSelectedClips, duplicateSelectedClips]);
 
   return (
     <section className="timeline-viewport">
-      <div
-        className="timeline-ruler"
-        style={{ gridTemplateColumns: `repeat(${totalBars}, ${BAR_WIDTH}px)` }}
-      >
-        {Array.from({ length: totalBars }, (_, index) => (
-          <span key={index}>Bar {index + 1}</span>
-        ))}
+      <div className="timeline-ruler-wrap">
+        <div
+          className="timeline-ruler"
+          style={{ gridTemplateColumns: `repeat(${totalBars}, ${BAR_WIDTH}px)` }}
+        >
+          {Array.from({ length: totalBars }, (_, index) => {
+            const barNumber = index + 1;
+            const inLoop =
+              session.loopRange.enabled &&
+              barNumber >= session.loopRange.start &&
+              barNumber < session.loopRange.end;
+            const active = session.playheadBar === barNumber;
+
+            return (
+              <button
+                key={barNumber}
+                type="button"
+                className={`ruler-cell ${inLoop ? "loop" : ""} ${active ? "active" : ""}`}
+                onClick={() => setPlayheadBar(barNumber)}
+              >
+                Bar {barNumber}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="timeline-grid" onPointerDown={() => clearSelection()}>
         {session.tracks.map((track) => (
           <div key={track.id} className="timeline-lane">
+            <div
+              className="playhead-line"
+              style={{ left: `${(session.playheadBar - 1) * BAR_WIDTH}px` }}
+            />
             {track.clips.map((clip) => {
               const selected = selectedClipIds.includes(clip.id);
 
@@ -107,14 +169,28 @@ export function TimelineViewport() {
                   }}
                   onPointerDown={(event) => {
                     event.stopPropagation();
-                    selectClip(clip.id, event.shiftKey);
+                    const additive = event.shiftKey;
+                    selectClip(clip.id, additive);
+                    const activeIds =
+                      additive && selectedClipIds.includes(clip.id)
+                        ? selectedClipIds
+                        : additive
+                          ? [...selectedClipIds, clip.id]
+                          : [clip.id];
+
                     startDrag({
                       clipId: clip.id,
                       trackId: track.id,
                       mode: "move",
                       originX: event.clientX,
-                      initialStart: clip.start,
-                      initialLength: clip.length,
+                      initialPositions: activeIds
+                        .map((clipId) => getClipById(clipId))
+                        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+                        .map((item) => ({
+                          clipId: item.clip.id,
+                          start: item.clip.start,
+                          length: item.clip.length,
+                        })),
                     });
                   }}
                 >
@@ -130,8 +206,13 @@ export function TimelineViewport() {
                         trackId: track.id,
                         mode: "resize-start",
                         originX: event.clientX,
-                        initialStart: clip.start,
-                        initialLength: clip.length,
+                        initialPositions: [
+                          {
+                            clipId: clip.id,
+                            start: clip.start,
+                            length: clip.length,
+                          },
+                        ],
                       });
                     }}
                   />
@@ -153,8 +234,13 @@ export function TimelineViewport() {
                         trackId: track.id,
                         mode: "resize-end",
                         originX: event.clientX,
-                        initialStart: clip.start,
-                        initialLength: clip.length,
+                        initialPositions: [
+                          {
+                            clipId: clip.id,
+                            start: clip.start,
+                            length: clip.length,
+                          },
+                        ],
                       });
                     }}
                   />
@@ -172,9 +258,13 @@ export function TimelineViewport() {
             {selectedClipIds
               .map((clipId) => getClipById(clipId)?.clip.name ?? clipId)
               .join(", ")}
+            . `Delete` removes, `Cmd/Ctrl + D` duplicates.
           </span>
         ) : (
-          <span>Click a clip to select it. Drag the body to move or the handles to resize.</span>
+          <span>
+            Click a ruler cell to move the playhead. Shift-click clips for multi-select,
+            then drag to move them together.
+          </span>
         )}
       </footer>
     </section>

@@ -27,6 +27,12 @@ export const demoSessions: Record<string, ProjectSession> = {
     tempo: 128,
     timeSignature: "4/4",
     playhead: "17.2.120",
+    playheadBar: 1,
+    loopRange: {
+      start: 1,
+      end: 5,
+      enabled: true,
+    },
     tracks: [
       {
         id: "track-lead-vox",
@@ -60,7 +66,7 @@ export const demoSessions: Record<string, ProjectSession> = {
         muted: false,
         solo: false,
         clips: [
-          { id: "clip-drums-1", name: "Kick + Snare", start: 0.0, length: 2.2, color: "ember" },
+          { id: "clip-drums-1", name: "Kick + Snare", start: 0, length: 2.2, color: "ember" },
           { id: "clip-drums-2", name: "Perc Loop", start: 2.8, length: 2.6, color: "amber" },
         ],
       },
@@ -98,6 +104,12 @@ export const demoSessions: Record<string, ProjectSession> = {
     tempo: 122,
     timeSignature: "4/4",
     playhead: "9.1.000",
+    playheadBar: 2,
+    loopRange: {
+      start: 2,
+      end: 4,
+      enabled: false,
+    },
     tracks: [
       {
         id: "track-kit",

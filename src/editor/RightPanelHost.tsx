@@ -10,13 +10,20 @@ export function RightPanelHost() {
         <p className="eyebrow">Comments</p>
         <h2>Review thread</h2>
         <ul className="thread-list">
-          {session.comments.map((comment) => (
-            <li key={comment.id}>
-              <strong>{comment.author}</strong>
-              <p>{comment.body}</p>
-              <small className="muted">{comment.anchorLabel}</small>
+          {session.comments.length > 0 ? (
+            session.comments.map((comment) => (
+              <li key={comment.id}>
+                <strong>{comment.author}</strong>
+                <p>{comment.body}</p>
+                <small className="muted">{comment.anchorLabel}</small>
+              </li>
+            ))
+          ) : (
+            <li>
+              <strong>No comments yet</strong>
+              <p>Share the session or add the first review note from the timeline.</p>
             </li>
-          ))}
+          )}
         </ul>
       </section>
 
@@ -25,14 +32,14 @@ export function RightPanelHost() {
         <h2>{selectedClip ? selectedClip.clip.name : "No clip selected"}</h2>
         <ul className="detail-list">
           <li>
-            Track: {selectedClip ? session.tracks.find((track) => track.id === selectedClip.trackId)?.name : "Select a clip"}
+            Track:{" "}
+            {selectedClip
+              ? session.tracks.find((track) => track.id === selectedClip.trackId)?.name
+              : "Select a clip"}
           </li>
-          <li>
-            Start: {selectedClip ? `${selectedClip.clip.start.toFixed(2)} bars` : "—"}
-          </li>
-          <li>
-            Length: {selectedClip ? `${selectedClip.clip.length.toFixed(2)} bars` : "—"}
-          </li>
+          <li>Start: {selectedClip ? `${selectedClip.clip.start.toFixed(2)} bars` : "—"}</li>
+          <li>Length: {selectedClip ? `${selectedClip.clip.length.toFixed(2)} bars` : "—"}</li>
+          <li>Loop: {session.loopRange.enabled ? "Enabled" : "Disabled"}</li>
         </ul>
       </section>
     </aside>

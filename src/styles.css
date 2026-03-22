@@ -183,6 +183,30 @@ button {
   font-size: 0.9rem;
 }
 
+.save-badge.saved {
+  background: rgba(92, 236, 164, 0.14);
+  color: #9effc6;
+}
+
+.save-badge.saving {
+  background: rgba(99, 230, 255, 0.16);
+  color: #9bebff;
+}
+
+.save-badge.dirty {
+  background: rgba(255, 157, 47, 0.18);
+  color: #ffd08c;
+}
+
+.loop-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d0c2;
+}
+
 .status-pill.draft {
   background: rgba(255, 170, 51, 0.18);
   color: #ffcf7a;
@@ -323,10 +347,31 @@ button {
   color: #d1c8b7;
 }
 
-.timeline-ruler span {
+.timeline-ruler-wrap {
+  overflow-x: auto;
+}
+
+.ruler-cell {
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
+  color: #d1c8b7;
+  text-align: left;
+}
+
+.ruler-cell.loop {
+  background: rgba(255, 209, 102, 0.12);
+}
+
+.ruler-cell.active {
+  background: rgba(99, 230, 255, 0.18);
+  color: #baf4ff;
+}
+
+.timeline-ruler span,
+.ruler-cell {
+  padding: 8px 10px;
+  border-radius: 10px;
 }
 
 .timeline-grid {
@@ -343,6 +388,15 @@ button {
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 100%),
     rgba(255, 255, 255, 0.03);
   background-size: 112px 100%;
+}
+
+.playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #63e6ff, rgba(99, 230, 255, 0.15));
+  pointer-events: none;
 }
 
 .timeline-clip {
@@ -451,6 +505,10 @@ button {
 .bottom-panel {
   display: grid;
   gap: 16px;
+}
+
+.bottom-panel-copy {
+  max-width: 72ch;
 }
 
 .piano-roll-grid {

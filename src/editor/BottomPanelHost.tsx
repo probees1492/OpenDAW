@@ -12,6 +12,11 @@ export function BottomPanelHost() {
           {selectedClip ? `${selectedClip.clip.name} detail` : "Piano roll / clip detail region"}
         </h2>
       </div>
+      <p className="muted bottom-panel-copy">
+        {selectedClip
+          ? "This area is ready for piano roll editing and clip-level detail tools."
+          : "Select a clip to inspect note content, waveform details, or contextual editing tools."}
+      </p>
       <div className="piano-roll-grid">
         {Array.from({ length: 6 }, (_, row) => (
           <div key={row} className="piano-roll-row">

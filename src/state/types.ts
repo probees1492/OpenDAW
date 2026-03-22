@@ -42,6 +42,12 @@ export type ProjectSession = {
   tempo: number;
   timeSignature: string;
   playhead: string;
+  playheadBar: number;
+  loopRange: {
+    start: number;
+    end: number;
+    enabled: boolean;
+  };
   tracks: Track[];
   comments: CommentThread[];
 };

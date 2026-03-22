@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useAppState } from "../state/AppStateProvider";
 import type { ProjectSummary } from "../state/types";
 
 type DashboardShellProps = {
@@ -7,6 +8,7 @@ type DashboardShellProps = {
 
 export function DashboardShell({ projects }: DashboardShellProps) {
   const navigate = useNavigate();
+  const { createProject } = useAppState();
 
   return (
     <main className="screen dashboard-screen">
@@ -19,31 +21,36 @@ export function DashboardShell({ projects }: DashboardShellProps) {
           <button className="secondary-button" onClick={() => navigate("/auth")}>
             Auth preview
           </button>
-          <button className="primary-button">New project</button>
+          <button
+            className="primary-button"
+            onClick={() => navigate(`/projects/${createProject()}`)}
+          >
+            New project
+          </button>
         </div>
       </header>
 
       <section className="hero-panel">
         <div>
           <p className="hero-kicker">Web-first DAW MVP</p>
-          <h2>From blank project to shared song draft.</h2>
+          <h2>From blank project to shareable song draft.</h2>
           <p className="muted">
-            This scaffold maps the documentation into a runnable dashboard and
-            editor shell. It is the starting point for the real product build.
+            The app now supports URL-based navigation, local autosave, project
+            creation, and timeline clip editing directly inside the browser.
           </p>
         </div>
         <div className="hero-metrics">
           <article>
             <span>Scope</span>
-            <strong>Dashboard</strong>
+            <strong>Live routes</strong>
           </article>
           <article>
             <span>Editor</span>
-            <strong>Timeline shell</strong>
+            <strong>Interactive timeline</strong>
           </article>
           <article>
             <span>Mode</span>
-            <strong>Prototype</strong>
+            <strong>Autosave local</strong>
           </article>
         </div>
       </section>

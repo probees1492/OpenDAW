@@ -2,8 +2,10 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
+  useRef,
   type PropsWithChildren,
 } from "react";
 import type { Clip, ProjectSession } from "./types";
@@ -15,14 +17,18 @@ type DragState = {
   trackId: string;
   mode: DragMode;
   originX: number;
-  initialStart: number;
-  initialLength: number;
+  initialPositions: Array<{
+    clipId: string;
+    start: number;
+    length: number;
+  }>;
 };
 
 type EditorState = {
   session: ProjectSession;
   selectedClipIds: string[];
   dragState: DragState | null;
+  saveState: "saved" | "dirty" | "saving";
 };
 
 type EditorAction =
@@ -30,19 +36,27 @@ type EditorAction =
   | { type: "clearSelection" }
   | { type: "startDrag"; dragState: DragState }
   | { type: "stopDrag" }
-  | { type: "moveClip"; clipId: string; start: number }
-  | { type: "resizeClip"; clipId: string; start: number; length: number };
+  | { type: "moveSelectedClips"; delta: number }
+  | { type: "resizeClip"; clipId: string; start: number; length: number }
+  | { type: "deleteSelectedClips" }
+  | { type: "duplicateSelectedClips" }
+  | { type: "setPlayheadBar"; bar: number }
+  | { type: "setSaveState"; saveState: EditorState["saveState"] };
 
 type EditorStateValue = {
   session: ProjectSession;
   selectedClipIds: string[];
   dragState: DragState | null;
+  saveState: EditorState["saveState"];
   selectClip: (clipId: string, additive?: boolean) => void;
   clearSelection: () => void;
   startDrag: (dragState: DragState) => void;
   stopDrag: () => void;
-  moveClip: (clipId: string, start: number) => void;
+  moveSelectedClips: (delta: number) => void;
   resizeClip: (clipId: string, start: number, length: number) => void;
+  deleteSelectedClips: () => void;
+  duplicateSelectedClips: () => void;
+  setPlayheadBar: (bar: number) => void;
   getClipById: (clipId: string) => { clip: Clip; trackId: string } | undefined;
 };
 
@@ -51,6 +65,7 @@ const EditorStateContext = createContext<EditorStateValue | null>(null);
 function cloneSession(session: ProjectSession): ProjectSession {
   return {
     ...session,
+    loopRange: { ...session.loopRange },
     tracks: session.tracks.map((track) => ({
       ...track,
       clips: track.clips.map((clip) => ({ ...clip })),
@@ -59,17 +74,11 @@ function cloneSession(session: ProjectSession): ProjectSession {
   };
 }
 
-function updateClip(
-  session: ProjectSession,
-  clipId: string,
-  updater: (clip: Clip) => Clip,
-): ProjectSession {
+function withDirtySaveState(session: ProjectSession, state: EditorState): EditorState {
   return {
-    ...session,
-    tracks: session.tracks.map((track) => ({
-      ...track,
-      clips: track.clips.map((clip) => (clip.id === clipId ? updater(clip) : clip)),
-    })),
+    ...state,
+    session,
+    saveState: "dirty",
   };
 }
 
@@ -77,7 +86,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case "selectClip": {
       const selectedClipIds = action.additive
-        ? Array.from(new Set([...state.selectedClipIds, action.clipId]))
+        ? state.selectedClipIds.includes(action.clipId)
+          ? state.selectedClipIds.filter((clipId) => clipId !== action.clipId)
+          : [...state.selectedClipIds, action.clipId]
         : [action.clipId];
 
       return { ...state, selectedClipIds };
@@ -88,23 +99,103 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, dragState: action.dragState };
     case "stopDrag":
       return { ...state, dragState: null };
-    case "moveClip":
-      return {
-        ...state,
-        session: updateClip(state.session, action.clipId, (clip) => ({
-          ...clip,
-          start: Math.max(0, action.start),
+    case "moveSelectedClips": {
+      const initialPositions = state.dragState?.initialPositions ?? [];
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) => ({
+          ...track,
+          clips: track.clips.map((clip) => {
+            const initial = initialPositions.find((item) => item.clipId === clip.id);
+            if (!initial) {
+              return clip;
+            }
+
+            return {
+              ...clip,
+              start: Math.max(0, initial.start + action.delta),
+            };
+          }),
         })),
       };
-    case "resizeClip":
-      return {
-        ...state,
-        session: updateClip(state.session, action.clipId, (clip) => ({
-          ...clip,
-          start: Math.max(0, action.start),
-          length: Math.max(0.5, action.length),
+
+      return withDirtySaveState(session, state);
+    }
+    case "resizeClip": {
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) => ({
+          ...track,
+          clips: track.clips.map((clip) =>
+            clip.id === action.clipId
+              ? {
+                  ...clip,
+                  start: Math.max(0, action.start),
+                  length: Math.max(0.5, action.length),
+                }
+              : clip,
+          ),
         })),
       };
+
+      return withDirtySaveState(session, state);
+    }
+    case "deleteSelectedClips": {
+      if (state.selectedClipIds.length === 0) {
+        return state;
+      }
+
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) => ({
+          ...track,
+          clips: track.clips.filter((clip) => !state.selectedClipIds.includes(clip.id)),
+        })),
+      };
+
+      return {
+        ...withDirtySaveState(session, state),
+        selectedClipIds: [],
+      };
+    }
+    case "duplicateSelectedClips": {
+      if (state.selectedClipIds.length === 0) {
+        return state;
+      }
+
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) => ({
+          ...track,
+          clips: [
+            ...track.clips,
+            ...track.clips
+              .filter((clip) => state.selectedClipIds.includes(clip.id))
+              .map((clip) => ({
+                ...clip,
+                id: `${clip.id}-copy-${Math.random().toString(36).slice(2, 7)}`,
+                name: `${clip.name} Copy`,
+                start: clip.start + 0.5,
+              })),
+          ],
+        })),
+      };
+
+      return withDirtySaveState(session, state);
+    }
+    case "setPlayheadBar": {
+      const boundedBar = Math.max(1, action.bar);
+      return withDirtySaveState(
+        {
+          ...state.session,
+          playheadBar: boundedBar,
+          playhead: `${boundedBar}.1.000`,
+        },
+        state,
+      );
+    }
+    case "setSaveState":
+      return { ...state, saveState: action.saveState };
     default:
       return state;
   }
@@ -113,12 +204,38 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 export function EditorStateProvider({
   children,
   session,
-}: PropsWithChildren<{ session: ProjectSession }>) {
+  onSessionChange,
+}: PropsWithChildren<{
+  session: ProjectSession;
+  onSessionChange: (session: ProjectSession) => void;
+}>) {
   const [state, dispatch] = useReducer(editorReducer, {
     session: cloneSession(session),
     selectedClipIds: [],
     dragState: null,
+    saveState: "saved",
   });
+  const isFirstSync = useRef(true);
+
+  useEffect(() => {
+    if (isFirstSync.current) {
+      isFirstSync.current = false;
+      return;
+    }
+
+    if (state.saveState !== "dirty") {
+      return;
+    }
+
+    dispatch({ type: "setSaveState", saveState: "saving" });
+
+    const timeout = window.setTimeout(() => {
+      onSessionChange(state.session);
+      dispatch({ type: "setSaveState", saveState: "saved" });
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
+  }, [onSessionChange, state.saveState, state.session]);
 
   const selectClip = useCallback((clipId: string, additive?: boolean) => {
     dispatch({ type: "selectClip", clipId, additive });
@@ -136,12 +253,24 @@ export function EditorStateProvider({
     dispatch({ type: "stopDrag" });
   }, []);
 
-  const moveClip = useCallback((clipId: string, start: number) => {
-    dispatch({ type: "moveClip", clipId, start });
+  const moveSelectedClips = useCallback((delta: number) => {
+    dispatch({ type: "moveSelectedClips", delta });
   }, []);
 
   const resizeClip = useCallback((clipId: string, start: number, length: number) => {
     dispatch({ type: "resizeClip", clipId, start, length });
+  }, []);
+
+  const deleteSelectedClips = useCallback(() => {
+    dispatch({ type: "deleteSelectedClips" });
+  }, []);
+
+  const duplicateSelectedClips = useCallback(() => {
+    dispatch({ type: "duplicateSelectedClips" });
+  }, []);
+
+  const setPlayheadBar = useCallback((bar: number) => {
+    dispatch({ type: "setPlayheadBar", bar });
   }, []);
 
   const getClipById = useCallback(
@@ -163,23 +292,30 @@ export function EditorStateProvider({
       session: state.session,
       selectedClipIds: state.selectedClipIds,
       dragState: state.dragState,
+      saveState: state.saveState,
       selectClip,
       clearSelection,
       startDrag,
       stopDrag,
-      moveClip,
+      moveSelectedClips,
       resizeClip,
+      deleteSelectedClips,
+      duplicateSelectedClips,
+      setPlayheadBar,
       getClipById,
     }),
     [
+      clearSelection,
+      deleteSelectedClips,
+      duplicateSelectedClips,
       getClipById,
-      moveClip,
+      moveSelectedClips,
       resizeClip,
       selectClip,
-      clearSelection,
+      setPlayheadBar,
       startDrag,
-      stopDrag,
       state,
+      stopDrag,
     ],
   );
 

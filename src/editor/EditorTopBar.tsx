@@ -1,3 +1,4 @@
+import { useEditorState } from "../state/EditorStateProvider";
 import type { ProjectSummary } from "../state/types";
 
 type EditorTopBarProps = {
@@ -6,6 +7,8 @@ type EditorTopBarProps = {
 };
 
 export function EditorTopBar({ project, onBack }: EditorTopBarProps) {
+  const { saveState, session } = useEditorState();
+
   return (
     <header className="editor-topbar">
       <div className="editor-topbar-left">
@@ -19,7 +22,10 @@ export function EditorTopBar({ project, onBack }: EditorTopBarProps) {
       </div>
 
       <div className="editor-topbar-right">
-        <span className="save-badge">Saved 12s ago</span>
+        <span className={`save-badge ${saveState}`}>{saveState}</span>
+        <span className="loop-badge">
+          Loop {session.loopRange.enabled ? `${session.loopRange.start}-${session.loopRange.end}` : "off"}
+        </span>
         <button className="secondary-button">Share</button>
         <button className="primary-button">Export</button>
       </div>
