@@ -134,6 +134,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         timeSignature: "4/4",
         playhead: "1.1.000",
         playheadBar: 1,
+        transport: "stopped",
         loopRange: {
           start: 1,
           end: 5,

@@ -1,9 +1,17 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEditorState } from "../state/EditorStateProvider";
 
 const BAR_WIDTH = 112;
 const MIN_CLIP_LENGTH = 0.5;
 const VISIBLE_BARS = 8;
+
+type MarqueeState = {
+  laneLeft: number;
+  trackId: string;
+  clipBounds: Array<{ clipId: string; left: number; right: number }>;
+  startX: number;
+  currentX: number;
+};
 
 function roundToGrid(value: number) {
   return Math.round(value * 4) / 4;
@@ -15,6 +23,7 @@ export function TimelineViewport() {
     selectedClipIds,
     dragState,
     selectClip,
+    selectMultipleClips,
     clearSelection,
     startDrag,
     stopDrag,
@@ -29,6 +38,7 @@ export function TimelineViewport() {
     setPlayheadBar,
     getClipById,
   } = useEditorState();
+  const [marquee, setMarquee] = useState<MarqueeState | null>(null);
   const hasSoloTrack = session.tracks.some((track) => track.solo);
 
   const totalBars = useMemo(() => {
@@ -95,6 +105,46 @@ export function TimelineViewport() {
   }, [dragState, moveSelectedClips, resizeClip, stopDrag]);
 
   useEffect(() => {
+    if (!marquee) {
+      return undefined;
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      setMarquee((current) => {
+        if (!current) {
+          return null;
+        }
+
+        const nextCurrentX = event.clientX - current.laneLeft;
+        const left = Math.min(current.startX, nextCurrentX);
+        const right = Math.max(current.startX, nextCurrentX);
+        const clipIds = current.clipBounds
+          .filter((clip) => clip.right >= left && clip.left <= right)
+          .map((clip) => clip.clipId);
+
+        selectMultipleClips(clipIds);
+
+        return {
+          ...current,
+          currentX: nextCurrentX,
+        };
+      });
+    }
+
+    function onPointerUp() {
+      setMarquee(null);
+    }
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [marquee, selectMultipleClips]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (
@@ -116,14 +166,19 @@ export function TimelineViewport() {
         duplicateSelectedClips();
       }
 
-      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "z"
+      ) {
         event.preventDefault();
         undo();
       }
 
       if (
         (event.metaKey || event.ctrlKey) &&
-        ((event.shiftKey && event.key.toLowerCase() === "z") || event.key.toLowerCase() === "y")
+        ((event.shiftKey && event.key.toLowerCase() === "z") ||
+          event.key.toLowerCase() === "y")
       ) {
         event.preventDefault();
         redo();
@@ -174,6 +229,26 @@ export function TimelineViewport() {
             className={`timeline-lane ${track.muted ? "muted-lane" : ""} ${
               hasSoloTrack && !track.solo ? "dimmed-lane" : ""
             }`}
+            onPointerDown={(event) => {
+              if (event.target !== event.currentTarget) {
+                return;
+              }
+
+              event.stopPropagation();
+              clearSelection();
+              const rect = event.currentTarget.getBoundingClientRect();
+              setMarquee({
+                laneLeft: rect.left,
+                trackId: track.id,
+                clipBounds: track.clips.map((clip) => ({
+                  clipId: clip.id,
+                  left: clip.start * BAR_WIDTH,
+                  right: clip.start * BAR_WIDTH + clip.length * BAR_WIDTH,
+                })),
+                startX: event.clientX - rect.left,
+                currentX: event.clientX - rect.left,
+              });
+            }}
           >
             <div
               className="playhead-line"
@@ -181,13 +256,29 @@ export function TimelineViewport() {
             />
             {track.clips.map((clip) => {
               const selected = selectedClipIds.includes(clip.id);
+              const clipLeft = clip.start * BAR_WIDTH;
+              const clipRight = clipLeft + clip.length * BAR_WIDTH;
+              const marqueeLeft = marquee
+                ? Math.min(marquee.startX, marquee.currentX)
+                : null;
+              const marqueeRight = marquee
+                ? Math.max(marquee.startX, marquee.currentX)
+                : null;
+              const inMarquee =
+                marquee?.trackId === track.id &&
+                marqueeLeft !== null &&
+                marqueeRight !== null &&
+                clipRight >= marqueeLeft &&
+                clipLeft <= marqueeRight;
 
               return (
                 <article
                   key={clip.id}
-                  className={`timeline-clip ${clip.color} ${selected ? "selected" : ""}`}
+                  className={`timeline-clip ${clip.color} ${
+                    selected || inMarquee ? "selected" : ""
+                  }`}
                   style={{
-                    left: `${clip.start * BAR_WIDTH}px`,
+                    left: `${clipLeft}px`,
                     width: `${clip.length * BAR_WIDTH}px`,
                   }}
                   onPointerDown={(event) => {
@@ -270,6 +361,15 @@ export function TimelineViewport() {
                 </article>
               );
             })}
+            {marquee ? (
+              <div
+                className="marquee-box"
+                style={{
+                  left: `${Math.min(marquee.startX, marquee.currentX)}px`,
+                  width: `${Math.abs(marquee.currentX - marquee.startX)}px`,
+                }}
+              />
+            ) : null}
           </div>
         ))}
       </div>
@@ -285,8 +385,8 @@ export function TimelineViewport() {
           </span>
         ) : (
           <span>
-            Click a ruler cell to move the playhead. Shift-click clips for multi-select,
-            then drag to move them together.
+            Click a ruler cell to move the playhead. Drag empty lane space for marquee
+            selection, or Shift-click clips for multi-select.
           </span>
         )}
         <span className="timeline-shortcuts">

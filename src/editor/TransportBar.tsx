@@ -1,18 +1,35 @@
 import { useEditorState } from "../state/EditorStateProvider";
 
-const transportButtons = ["Play", "Pause", "Stop", "Loop"];
-
 export function TransportBar() {
-  const { session } = useEditorState();
+  const { session, setTransportState, toggleLoopEnabled } = useEditorState();
 
   return (
     <section className="transport-bar">
       <div className="transport-controls">
-        {transportButtons.map((label) => (
-          <button key={label} className="transport-button">
-            {label}
-          </button>
-        ))}
+        <button
+          className={`transport-button ${session.transport === "playing" ? "active-transport" : ""}`}
+          onClick={() => setTransportState("playing")}
+        >
+          Play
+        </button>
+        <button
+          className={`transport-button ${session.transport === "paused" ? "active-transport" : ""}`}
+          onClick={() => setTransportState("paused")}
+        >
+          Pause
+        </button>
+        <button
+          className={`transport-button ${session.transport === "stopped" ? "active-transport" : ""}`}
+          onClick={() => setTransportState("stopped")}
+        >
+          Stop
+        </button>
+        <button
+          className={`transport-button ${session.loopRange.enabled ? "active-transport" : ""}`}
+          onClick={toggleLoopEnabled}
+        >
+          Loop
+        </button>
       </div>
 
       <div className="transport-readouts">
@@ -27,6 +44,10 @@ export function TransportBar() {
         <div>
           <span className="label">Playhead</span>
           <strong>{session.playhead}</strong>
+        </div>
+        <div>
+          <span className="label">Transport</span>
+          <strong>{session.transport}</strong>
         </div>
       </div>
     </section>

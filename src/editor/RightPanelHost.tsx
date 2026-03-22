@@ -7,8 +7,14 @@ function anchorToBar(anchorLabel: string) {
 }
 
 export function RightPanelHost() {
-  const { session, selectedClipIds, getClipById, addComment, setPlayheadBar } =
-    useEditorState();
+  const {
+    session,
+    selectedClipIds,
+    getClipById,
+    addComment,
+    setPlayheadBar,
+    toggleCommentResolved,
+  } = useEditorState();
   const [commentDraft, setCommentDraft] = useState("");
   const selectedClip = selectedClipIds[0] ? getClipById(selectedClipIds[0]) : undefined;
 
@@ -38,7 +44,7 @@ export function RightPanelHost() {
         <ul className="thread-list">
           {session.comments.length > 0 ? (
             session.comments.map((comment) => (
-              <li key={comment.id}>
+              <li key={comment.id} className={comment.resolved ? "resolved-comment" : ""}>
                 <button
                   type="button"
                   className="comment-jump"
@@ -47,6 +53,13 @@ export function RightPanelHost() {
                   <strong>{comment.author}</strong>
                   <p>{comment.body}</p>
                   <small className="muted">{comment.anchorLabel}</small>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button comment-action"
+                  onClick={() => toggleCommentResolved(comment.id)}
+                >
+                  {comment.resolved ? "Reopen" : "Resolve"}
                 </button>
               </li>
             ))

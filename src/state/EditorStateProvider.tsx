@@ -8,7 +8,7 @@ import {
   useRef,
   type PropsWithChildren,
 } from "react";
-import type { Clip, ProjectSession, TrackType } from "./types";
+import type { Clip, ProjectSession, TrackType, TransportState } from "./types";
 
 type DragMode = "move" | "resize-start" | "resize-end";
 
@@ -39,6 +39,7 @@ type EditorState = {
 
 type EditorAction =
   | { type: "selectClip"; clipId: string; additive?: boolean }
+  | { type: "selectMultipleClips"; clipIds: string[] }
   | { type: "clearSelection" }
   | { type: "startDrag"; dragState: DragState }
   | { type: "stopDrag" }
@@ -47,10 +48,13 @@ type EditorAction =
   | { type: "deleteSelectedClips" }
   | { type: "duplicateSelectedClips" }
   | { type: "setPlayheadBar"; bar: number }
+  | { type: "setTransportState"; transport: TransportState }
+  | { type: "toggleLoopEnabled" }
   | { type: "addTrack"; trackType: TrackType }
   | { type: "toggleTrackMute"; trackId: string }
   | { type: "toggleTrackSolo"; trackId: string }
   | { type: "addComment"; body: string }
+  | { type: "toggleCommentResolved"; commentId: string }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "setSaveState"; saveState: EditorState["saveState"] };
@@ -63,6 +67,7 @@ type EditorStateValue = {
   canUndo: boolean;
   canRedo: boolean;
   selectClip: (clipId: string, additive?: boolean) => void;
+  selectMultipleClips: (clipIds: string[]) => void;
   clearSelection: () => void;
   startDrag: (dragState: DragState) => void;
   stopDrag: () => void;
@@ -71,10 +76,13 @@ type EditorStateValue = {
   deleteSelectedClips: () => void;
   duplicateSelectedClips: () => void;
   setPlayheadBar: (bar: number) => void;
+  setTransportState: (transport: TransportState) => void;
+  toggleLoopEnabled: () => void;
   addTrack: (trackType: TrackType) => void;
   toggleTrackMute: (trackId: string) => void;
   toggleTrackSolo: (trackId: string) => void;
   addComment: (body: string) => void;
+  toggleCommentResolved: (commentId: string) => void;
   undo: () => void;
   redo: () => void;
   getClipById: (clipId: string) => { clip: Clip; trackId: string } | undefined;
@@ -126,6 +134,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
       return { ...state, selectedClipIds };
     }
+    case "selectMultipleClips":
+      return { ...state, selectedClipIds: action.clipIds };
     case "clearSelection":
       return { ...state, selectedClipIds: [] };
     case "startDrag":
@@ -230,6 +240,22 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         saveState: "dirty",
       };
     }
+    case "setTransportState":
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          transport: action.transport,
+        },
+      };
+    case "toggleLoopEnabled":
+      return withSession(state, {
+        ...state.session,
+        loopRange: {
+          ...state.session.loopRange,
+          enabled: !state.session.loopRange.enabled,
+        },
+      });
     case "addTrack": {
       const trackIndex = state.session.tracks.length + 1;
       const trackType = action.trackType;
@@ -299,6 +325,18 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           },
           ...state.session.comments,
         ],
+      };
+
+      return withSession(state, session);
+    }
+    case "toggleCommentResolved": {
+      const session = {
+        ...state.session,
+        comments: state.session.comments.map((comment) =>
+          comment.id === action.commentId
+            ? { ...comment, resolved: !comment.resolved }
+            : comment,
+        ),
       };
 
       return withSession(state, session);
@@ -397,6 +435,10 @@ export function EditorStateProvider({
     dispatch({ type: "selectClip", clipId, additive });
   }, []);
 
+  const selectMultipleClips = useCallback((clipIds: string[]) => {
+    dispatch({ type: "selectMultipleClips", clipIds });
+  }, []);
+
   const clearSelection = useCallback(() => {
     dispatch({ type: "clearSelection" });
   }, []);
@@ -429,6 +471,14 @@ export function EditorStateProvider({
     dispatch({ type: "setPlayheadBar", bar });
   }, []);
 
+  const setTransportState = useCallback((transport: TransportState) => {
+    dispatch({ type: "setTransportState", transport });
+  }, []);
+
+  const toggleLoopEnabled = useCallback(() => {
+    dispatch({ type: "toggleLoopEnabled" });
+  }, []);
+
   const addTrack = useCallback((trackType: TrackType) => {
     dispatch({ type: "addTrack", trackType });
   }, []);
@@ -443,6 +493,10 @@ export function EditorStateProvider({
 
   const addComment = useCallback((body: string) => {
     dispatch({ type: "addComment", body });
+  }, []);
+
+  const toggleCommentResolved = useCallback((commentId: string) => {
+    dispatch({ type: "toggleCommentResolved", commentId });
   }, []);
 
   const undo = useCallback(() => {
@@ -476,6 +530,7 @@ export function EditorStateProvider({
       canUndo: state.history.past.length > 0,
       canRedo: state.history.future.length > 0,
       selectClip,
+      selectMultipleClips,
       clearSelection,
       startDrag,
       stopDrag,
@@ -484,10 +539,13 @@ export function EditorStateProvider({
       deleteSelectedClips,
       duplicateSelectedClips,
       setPlayheadBar,
+      setTransportState,
+      toggleLoopEnabled,
       addTrack,
       toggleTrackMute,
       toggleTrackSolo,
       addComment,
+      toggleCommentResolved,
       undo,
       redo,
       getClipById,
@@ -503,10 +561,14 @@ export function EditorStateProvider({
       redo,
       resizeClip,
       selectClip,
+      selectMultipleClips,
       setPlayheadBar,
+      setTransportState,
       startDrag,
       state,
       stopDrag,
+      toggleCommentResolved,
+      toggleLoopEnabled,
       toggleTrackMute,
       toggleTrackSolo,
       undo,

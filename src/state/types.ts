@@ -1,5 +1,6 @@
 export type ProjectStatus = "Draft" | "Review";
 export type TrackType = "Audio" | "MIDI";
+export type TransportState = "stopped" | "playing" | "paused";
 
 export type ProjectSummary = {
   id: string;
@@ -43,6 +44,7 @@ export type ProjectSession = {
   timeSignature: string;
   playhead: string;
   playheadBar: number;
+  transport: TransportState;
   loopRange: {
     start: number;
     end: number;

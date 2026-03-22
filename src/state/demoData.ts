@@ -28,6 +28,7 @@ export const demoSessions: Record<string, ProjectSession> = {
     timeSignature: "4/4",
     playhead: "17.2.120",
     playheadBar: 1,
+    transport: "stopped",
     loopRange: {
       start: 1,
       end: 5,
@@ -105,6 +106,7 @@ export const demoSessions: Record<string, ProjectSession> = {
     timeSignature: "4/4",
     playhead: "9.1.000",
     playheadBar: 2,
+    transport: "paused",
     loopRange: {
       start: 2,
       end: 4,
