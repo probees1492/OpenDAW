@@ -1,14 +1,28 @@
 # OpenDAW
 
-OpenDAW is the starting repository for a new digital audio workstation project.
+OpenDAW is a browser-first digital audio workstation project focused on fast music creation, timeline-based review, and collaborative workflows.
 
 ## Repository layout
 
-- `src/` application source code
-- `docs/` project notes and design documents
+- `src/` React + TypeScript application scaffold
+- `docs/` product, UX, and architecture documents
+- `index.html`, `vite.config.ts`, `tsconfig*.json` app build configuration
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Current status
+
+- project dashboard shell
+- editor shell with transport, track list, timeline, comments, and bottom panel placeholders
+- document-aligned frontend module structure for dashboard and editor work
 
 ## Next steps
 
-1. Define the target platform and stack.
-2. Add the first runnable application skeleton.
-3. Set up build, test, and release workflows.
+1. Add real routing and project state management.
+2. Implement timeline interactions and piano roll editing.
+3. Connect authentication, project APIs, autosave, and collaboration services.
