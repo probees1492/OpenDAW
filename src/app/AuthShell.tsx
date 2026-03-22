@@ -1,8 +1,8 @@
-type AuthShellProps = {
-  onContinue: () => void;
-};
+import { Link, useNavigate } from "react-router-dom";
 
-export function AuthShell({ onContinue }: AuthShellProps) {
+export function AuthShell() {
+  const navigate = useNavigate();
+
   return (
     <main className="screen auth-screen">
       <section className="auth-panel">
@@ -22,10 +22,18 @@ export function AuthShell({ onContinue }: AuthShellProps) {
             Password
             <input type="password" placeholder="••••••••" />
           </label>
-          <button type="button" className="primary-button" onClick={onContinue}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => navigate("/")}
+          >
             Enter OpenDAW
           </button>
         </form>
+
+        <p className="muted auth-footer">
+          Prototype auth only. <Link to="/">Return to dashboard</Link>
+        </p>
       </section>
     </main>
   );

@@ -20,6 +20,10 @@ body {
   min-height: 100vh;
 }
 
+a {
+  color: #ffd166;
+}
+
 button,
 input {
   font: inherit;
@@ -283,12 +287,24 @@ button {
   background: #ffb347;
 }
 
+.track-color.sun {
+  background: #ffd166;
+}
+
 .track-color.cyan {
   background: #63e6ff;
 }
 
+.track-color.mint {
+  background: #66f0c0;
+}
+
 .track-color.rose {
   background: #ff7a90;
+}
+
+.track-color.ember {
+  background: #ff9564;
 }
 
 .track-color.lime {
@@ -296,15 +312,21 @@ button {
 }
 
 .timeline-viewport {
-  overflow: hidden;
+  display: grid;
+  gap: 14px;
+  overflow-x: auto;
 }
 
 .timeline-ruler {
   display: grid;
-  grid-template-columns: repeat(8, minmax(90px, 1fr));
   gap: 8px;
-  margin-bottom: 12px;
   color: #d1c8b7;
+}
+
+.timeline-ruler span {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .timeline-grid {
@@ -313,26 +335,101 @@ button {
 }
 
 .timeline-lane {
-  display: flex;
-  gap: 10px;
+  position: relative;
   min-height: 72px;
-  align-items: center;
   padding: 8px;
   border-radius: 16px;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 100%),
     rgba(255, 255, 255, 0.03);
-  background-size: 110px 100%;
+  background-size: 112px 100%;
 }
 
 .timeline-clip {
-  min-width: 160px;
-  padding: 18px 16px;
+  position: absolute;
+  top: 8px;
+  display: grid;
+  grid-template-columns: 12px 1fr 12px;
+  align-items: stretch;
+  min-width: 56px;
+  height: 56px;
   border-radius: 14px;
   background:
     linear-gradient(135deg, rgba(255, 180, 71, 0.65), rgba(255, 122, 144, 0.45));
   color: #1f1108;
   font-weight: 700;
+  overflow: hidden;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.timeline-clip.selected {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(255, 157, 47, 0.35);
+}
+
+.timeline-clip.sun {
+  background: linear-gradient(135deg, #ffd166, #ff9d2f);
+}
+
+.timeline-clip.rose {
+  background: linear-gradient(135deg, #ff9fb2, #ff6b87);
+}
+
+.timeline-clip.cyan {
+  background: linear-gradient(135deg, #7be7ff, #44d3ff);
+}
+
+.timeline-clip.mint {
+  background: linear-gradient(135deg, #7cffcf, #4ce0ae);
+}
+
+.timeline-clip.ember {
+  background: linear-gradient(135deg, #ffb37b, #ff7f50);
+}
+
+.timeline-clip.lime {
+  background: linear-gradient(135deg, #d9ff7f, #9be33c);
+}
+
+.clip-copy {
+  display: grid;
+  align-content: center;
+  padding: 0 8px;
+  overflow: hidden;
+}
+
+.clip-copy span,
+.clip-copy small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip-copy small {
+  color: rgba(31, 17, 8, 0.72);
+}
+
+.clip-handle {
+  width: 12px;
+  padding: 0;
+  background: rgba(31, 17, 8, 0.18);
+  cursor: ew-resize;
+}
+
+.clip-handle.start {
+  border-radius: 14px 0 0 14px;
+}
+
+.clip-handle.end {
+  border-radius: 0 14px 14px 0;
+}
+
+.timeline-status {
+  color: #b4b9c0;
+}
+
+.auth-footer {
+  margin-top: 18px;
 }
 
 .thread-list,

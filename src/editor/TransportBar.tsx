@@ -1,6 +1,10 @@
+import { useEditorState } from "../state/EditorStateProvider";
+
 const transportButtons = ["Play", "Pause", "Stop", "Loop"];
 
 export function TransportBar() {
+  const { session } = useEditorState();
+
   return (
     <section className="transport-bar">
       <div className="transport-controls">
@@ -14,15 +18,15 @@ export function TransportBar() {
       <div className="transport-readouts">
         <div>
           <span className="label">Tempo</span>
-          <strong>128 BPM</strong>
+          <strong>{session.tempo} BPM</strong>
         </div>
         <div>
           <span className="label">Signature</span>
-          <strong>4/4</strong>
+          <strong>{session.timeSignature}</strong>
         </div>
         <div>
           <span className="label">Playhead</span>
-          <strong>17.2.120</strong>
+          <strong>{session.playhead}</strong>
         </div>
       </div>
     </section>

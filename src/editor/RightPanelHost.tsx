@@ -1,28 +1,38 @@
+import { useEditorState } from "../state/EditorStateProvider";
+
 export function RightPanelHost() {
+  const { session, selectedClipIds, getClipById } = useEditorState();
+  const selectedClip = selectedClipIds[0] ? getClipById(selectedClipIds[0]) : undefined;
+
   return (
     <aside className="right-panel">
       <section className="panel-card">
         <p className="eyebrow">Comments</p>
         <h2>Review thread</h2>
         <ul className="thread-list">
-          <li>
-            <strong>probees1492</strong>
-            <p>Hook vocal needs a cleaner transition into bar 17.</p>
-          </li>
-          <li>
-            <strong>collaborator</strong>
-            <p>Try muting the keys during the pickup to open more space.</p>
-          </li>
+          {session.comments.map((comment) => (
+            <li key={comment.id}>
+              <strong>{comment.author}</strong>
+              <p>{comment.body}</p>
+              <small className="muted">{comment.anchorLabel}</small>
+            </li>
+          ))}
         </ul>
       </section>
 
       <section className="panel-card">
-        <p className="eyebrow">Session</p>
-        <h2>Project status</h2>
+        <p className="eyebrow">Inspector</p>
+        <h2>{selectedClip ? selectedClip.clip.name : "No clip selected"}</h2>
         <ul className="detail-list">
-          <li>Autosave healthy</li>
-          <li>2 open comments</li>
-          <li>Export preset: stereo mix</li>
+          <li>
+            Track: {selectedClip ? session.tracks.find((track) => track.id === selectedClip.trackId)?.name : "Select a clip"}
+          </li>
+          <li>
+            Start: {selectedClip ? `${selectedClip.clip.start.toFixed(2)} bars` : "—"}
+          </li>
+          <li>
+            Length: {selectedClip ? `${selectedClip.clip.length.toFixed(2)} bars` : "—"}
+          </li>
         </ul>
       </section>
     </aside>

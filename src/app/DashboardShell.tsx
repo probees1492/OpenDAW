@@ -1,16 +1,13 @@
+import { useNavigate } from "react-router-dom";
 import type { ProjectSummary } from "../state/types";
 
 type DashboardShellProps = {
   projects: ProjectSummary[];
-  onOpenProject: (projectId: string) => void;
-  onOpenAuth: () => void;
 };
 
-export function DashboardShell({
-  projects,
-  onOpenProject,
-  onOpenAuth,
-}: DashboardShellProps) {
+export function DashboardShell({ projects }: DashboardShellProps) {
+  const navigate = useNavigate();
+
   return (
     <main className="screen dashboard-screen">
       <header className="dashboard-topbar">
@@ -19,7 +16,7 @@ export function DashboardShell({
           <h1>Project dashboard</h1>
         </div>
         <div className="topbar-actions">
-          <button className="secondary-button" onClick={onOpenAuth}>
+          <button className="secondary-button" onClick={() => navigate("/auth")}>
             Auth preview
           </button>
           <button className="primary-button">New project</button>
@@ -74,7 +71,7 @@ export function DashboardShell({
             </dl>
             <button
               className="primary-button"
-              onClick={() => onOpenProject(project.id)}
+              onClick={() => navigate(`/projects/${project.id}`)}
             >
               Open editor
             </button>

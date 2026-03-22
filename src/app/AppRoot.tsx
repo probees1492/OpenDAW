@@ -1,41 +1,20 @@
-import { useMemo, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useAppState } from "../state/AppStateProvider";
+import { AuthShell } from "./AuthShell";
 import { DashboardShell } from "./DashboardShell";
 import { EditorShell } from "./EditorShell";
-import { AuthShell } from "./AuthShell";
-import { demoProjects } from "../state/demoData";
-import type { AppScreen, ProjectSummary } from "../state/types";
 
 export function AppRoot() {
-  const [screen, setScreen] = useState<AppScreen>("dashboard");
-  const [projects] = useState<ProjectSummary[]>(demoProjects);
-  const [activeProjectId, setActiveProjectId] = useState<string>(demoProjects[0].id);
-
-  const activeProject = useMemo(
-    () => projects.find((project) => project.id === activeProjectId) ?? projects[0],
-    [activeProjectId, projects],
-  );
-
-  if (screen === "auth") {
-    return <AuthShell onContinue={() => setScreen("dashboard")} />;
-  }
-
-  if (screen === "editor") {
-    return (
-      <EditorShell
-        project={activeProject}
-        onBack={() => setScreen("dashboard")}
-      />
-    );
-  }
+  const { projects } = useAppState();
 
   return (
-    <DashboardShell
-      projects={projects}
-      onOpenProject={(projectId) => {
-        setActiveProjectId(projectId);
-        setScreen("editor");
-      }}
-      onOpenAuth={() => setScreen("auth")}
-    />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<DashboardShell projects={projects} />} />
+        <Route path="/auth" element={<AuthShell />} />
+        <Route path="/projects/:projectId" element={<EditorShell />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

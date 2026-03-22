@@ -1,17 +1,14 @@
-const tracks = [
-  { name: "Lead Vox", type: "Audio", color: "amber" },
-  { name: "Keys", type: "MIDI", color: "cyan" },
-  { name: "Drums", type: "Audio", color: "rose" },
-  { name: "Bass", type: "MIDI", color: "lime" },
-];
+import { useEditorState } from "../state/EditorStateProvider";
 
 export function TrackHeaderPane() {
+  const { session } = useEditorState();
+
   return (
     <aside className="track-header-pane">
       <button className="primary-button add-track-button">Add track</button>
       <div className="track-list">
-        {tracks.map((track) => (
-          <article key={track.name} className="track-row">
+        {session.tracks.map((track) => (
+          <article key={track.id} className="track-row">
             <div className={`track-color ${track.color}`} />
             <div className="track-copy">
               <strong>{track.name}</strong>
