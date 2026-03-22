@@ -11,7 +11,8 @@ import { EditorStateProvider } from "../state/EditorStateProvider";
 export function EditorShell() {
   const navigate = useNavigate();
   const { projectId } = useParams();
-  const { getProjectById, getSessionByProjectId, updateSession } = useAppState();
+  const { getProjectById, getSessionByProjectId, updateSession, renameProject } =
+    useAppState();
 
   if (!projectId) {
     return <Navigate to="/" replace />;
@@ -30,7 +31,11 @@ export function EditorShell() {
       onSessionChange={(nextSession) => updateSession(projectId, nextSession)}
     >
       <main className="screen editor-screen">
-        <EditorTopBar project={project} onBack={() => navigate("/")} />
+        <EditorTopBar
+          project={project}
+          onBack={() => navigate("/")}
+          onRenameProject={(name) => renameProject(projectId, name)}
+        />
         <TransportBar />
         <section className="editor-workspace">
           <TrackHeaderPane />

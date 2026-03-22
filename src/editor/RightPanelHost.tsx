@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { useEditorState } from "../state/EditorStateProvider";
 
+function anchorToBar(anchorLabel: string) {
+  const match = anchorLabel.match(/Bar[s]?\s+(\d+)/i);
+  return match ? Number(match[1]) : 1;
+}
+
 export function RightPanelHost() {
-  const { session, selectedClipIds, getClipById, addComment } = useEditorState();
+  const { session, selectedClipIds, getClipById, addComment, setPlayheadBar } =
+    useEditorState();
   const [commentDraft, setCommentDraft] = useState("");
   const selectedClip = selectedClipIds[0] ? getClipById(selectedClipIds[0]) : undefined;
 
@@ -33,9 +39,15 @@ export function RightPanelHost() {
           {session.comments.length > 0 ? (
             session.comments.map((comment) => (
               <li key={comment.id}>
-                <strong>{comment.author}</strong>
-                <p>{comment.body}</p>
-                <small className="muted">{comment.anchorLabel}</small>
+                <button
+                  type="button"
+                  className="comment-jump"
+                  onClick={() => setPlayheadBar(anchorToBar(comment.anchorLabel))}
+                >
+                  <strong>{comment.author}</strong>
+                  <p>{comment.body}</p>
+                  <small className="muted">{comment.anchorLabel}</small>
+                </button>
               </li>
             ))
           ) : (

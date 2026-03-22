@@ -1,7 +1,8 @@
 import { useEditorState } from "../state/EditorStateProvider";
 
 export function TrackHeaderPane() {
-  const { session, addTrack } = useEditorState();
+  const { session, addTrack, toggleTrackMute, toggleTrackSolo } = useEditorState();
+  const hasSoloTrack = session.tracks.some((track) => track.solo);
 
   return (
     <aside className="track-header-pane">
@@ -14,19 +15,36 @@ export function TrackHeaderPane() {
         </button>
       </div>
       <div className="track-list">
-        {session.tracks.map((track) => (
-          <article key={track.id} className="track-row">
-            <div className={`track-color ${track.color}`} />
-            <div className="track-copy">
-              <strong>{track.name}</strong>
-              <span>{track.type}</span>
-            </div>
-            <div className="track-toggles">
-              <button>M</button>
-              <button>S</button>
-            </div>
-          </article>
-        ))}
+        {session.tracks.map((track) => {
+          const dimmed = hasSoloTrack && !track.solo;
+
+          return (
+            <article
+              key={track.id}
+              className={`track-row ${track.muted ? "muted-track" : ""} ${dimmed ? "dimmed-track" : ""}`}
+            >
+              <div className={`track-color ${track.color}`} />
+              <div className="track-copy">
+                <strong>{track.name}</strong>
+                <span>{track.type}</span>
+              </div>
+              <div className="track-toggles">
+                <button
+                  className={track.muted ? "active-toggle" : ""}
+                  onClick={() => toggleTrackMute(track.id)}
+                >
+                  M
+                </button>
+                <button
+                  className={track.solo ? "active-toggle" : ""}
+                  onClick={() => toggleTrackSolo(track.id)}
+                >
+                  S
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </aside>
   );

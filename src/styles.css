@@ -118,6 +118,21 @@ button {
   gap: 16px;
 }
 
+.project-title-block {
+  display: grid;
+  gap: 4px;
+}
+
+.project-title-input {
+  min-width: 260px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f5f1e8;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
 .hero-panel {
   justify-content: space-between;
   gap: 24px;
@@ -302,6 +317,14 @@ button {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.muted-track {
+  opacity: 0.7;
+}
+
+.dimmed-track {
+  opacity: 0.55;
+}
+
 .track-copy {
   display: grid;
   gap: 2px;
@@ -394,6 +417,14 @@ button {
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 100%),
     rgba(255, 255, 255, 0.03);
   background-size: 112px 100%;
+}
+
+.muted-lane {
+  opacity: 0.72;
+}
+
+.dimmed-lane {
+  opacity: 0.5;
 }
 
 .playhead-line {
@@ -516,6 +547,16 @@ button {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.comment-jump {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
 .comment-composer {
   display: grid;
   gap: 10px;
@@ -530,6 +571,11 @@ button {
   background: rgba(255, 255, 255, 0.05);
   color: inherit;
   font: inherit;
+}
+
+.active-toggle {
+  background: rgba(255, 209, 102, 0.22) !important;
+  color: #ffd166 !important;
 }
 
 .bottom-panel {

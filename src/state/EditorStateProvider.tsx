@@ -48,6 +48,8 @@ type EditorAction =
   | { type: "duplicateSelectedClips" }
   | { type: "setPlayheadBar"; bar: number }
   | { type: "addTrack"; trackType: TrackType }
+  | { type: "toggleTrackMute"; trackId: string }
+  | { type: "toggleTrackSolo"; trackId: string }
   | { type: "addComment"; body: string }
   | { type: "undo" }
   | { type: "redo" }
@@ -70,6 +72,8 @@ type EditorStateValue = {
   duplicateSelectedClips: () => void;
   setPlayheadBar: (bar: number) => void;
   addTrack: (trackType: TrackType) => void;
+  toggleTrackMute: (trackId: string) => void;
+  toggleTrackSolo: (trackId: string) => void;
   addComment: (body: string) => void;
   undo: () => void;
   redo: () => void;
@@ -257,6 +261,26 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
       return withSession(state, session);
     }
+    case "toggleTrackMute": {
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) =>
+          track.id === action.trackId ? { ...track, muted: !track.muted } : track,
+        ),
+      };
+
+      return withSession(state, session);
+    }
+    case "toggleTrackSolo": {
+      const session = {
+        ...state.session,
+        tracks: state.session.tracks.map((track) =>
+          track.id === action.trackId ? { ...track, solo: !track.solo } : track,
+        ),
+      };
+
+      return withSession(state, session);
+    }
     case "addComment": {
       const trimmed = action.body.trim();
       if (!trimmed) {
@@ -409,6 +433,14 @@ export function EditorStateProvider({
     dispatch({ type: "addTrack", trackType });
   }, []);
 
+  const toggleTrackMute = useCallback((trackId: string) => {
+    dispatch({ type: "toggleTrackMute", trackId });
+  }, []);
+
+  const toggleTrackSolo = useCallback((trackId: string) => {
+    dispatch({ type: "toggleTrackSolo", trackId });
+  }, []);
+
   const addComment = useCallback((body: string) => {
     dispatch({ type: "addComment", body });
   }, []);
@@ -453,6 +485,8 @@ export function EditorStateProvider({
       duplicateSelectedClips,
       setPlayheadBar,
       addTrack,
+      toggleTrackMute,
+      toggleTrackSolo,
       addComment,
       undo,
       redo,
@@ -473,6 +507,8 @@ export function EditorStateProvider({
       startDrag,
       state,
       stopDrag,
+      toggleTrackMute,
+      toggleTrackSolo,
       undo,
     ],
   );

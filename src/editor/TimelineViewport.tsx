@@ -29,6 +29,7 @@ export function TimelineViewport() {
     setPlayheadBar,
     getClipById,
   } = useEditorState();
+  const hasSoloTrack = session.tracks.some((track) => track.solo);
 
   const totalBars = useMemo(() => {
     const maxClipEnd = Math.max(
@@ -168,7 +169,12 @@ export function TimelineViewport() {
 
       <div className="timeline-grid" onPointerDown={() => clearSelection()}>
         {session.tracks.map((track) => (
-          <div key={track.id} className="timeline-lane">
+          <div
+            key={track.id}
+            className={`timeline-lane ${track.muted ? "muted-lane" : ""} ${
+              hasSoloTrack && !track.solo ? "dimmed-lane" : ""
+            }`}
+          >
             <div
               className="playhead-line"
               style={{ left: `${(session.playheadBar - 1) * BAR_WIDTH}px` }}

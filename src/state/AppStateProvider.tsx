@@ -23,6 +23,7 @@ type AppStateValue = {
   getSessionByProjectId: (projectId: string) => ProjectSession | undefined;
   createProject: () => string;
   updateSession: (projectId: string, session: ProjectSession) => void;
+  renameProject: (projectId: string, name: string) => void;
 };
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -90,6 +91,26 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         ...current.sessions,
         [projectId]: session,
       },
+    }));
+  }, []);
+
+  const renameProject = useCallback((projectId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      projects: current.projects.map((project) =>
+        project.id === projectId
+          ? {
+              ...project,
+              name: trimmed,
+              updatedAt: formatUpdatedAt(),
+            }
+          : project,
+      ),
     }));
   }, []);
 
@@ -176,8 +197,16 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       getSessionByProjectId,
       createProject,
       updateSession,
+      renameProject,
     }),
-    [createProject, getProjectById, getSessionByProjectId, state.projects, updateSession],
+    [
+      createProject,
+      getProjectById,
+      getSessionByProjectId,
+      renameProject,
+      state.projects,
+      updateSession,
+    ],
   );
 
   return (
