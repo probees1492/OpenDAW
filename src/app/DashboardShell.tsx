@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../state/AppStateProvider";
 import type { ProjectSummary } from "../state/types";
@@ -9,6 +10,21 @@ type DashboardShellProps = {
 export function DashboardShell({ projects }: DashboardShellProps) {
   const navigate = useNavigate();
   const { createProject } = useAppState();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateProject = async () => {
+    if (isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const projectId = await createProject();
+      navigate(`/projects/${projectId}`);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <main className="screen dashboard-screen">
@@ -23,9 +39,10 @@ export function DashboardShell({ projects }: DashboardShellProps) {
           </button>
           <button
             className="primary-button"
-            onClick={() => navigate(`/projects/${createProject()}`)}
+            onClick={handleCreateProject}
+            disabled={isCreating}
           >
-            New project
+            {isCreating ? "Creating..." : "New project"}
           </button>
         </div>
       </header>

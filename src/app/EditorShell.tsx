@@ -1,12 +1,32 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { BottomPanelHost } from "../editor/BottomPanelHost";
+import { useCallback } from "react";
 import { EditorTopBar } from "../editor/EditorTopBar";
-import { RightPanelHost } from "../editor/RightPanelHost";
-import { TimelineViewport } from "../editor/TimelineViewport";
-import { TrackHeaderPane } from "../editor/TrackHeaderPane";
-import { TransportBar } from "../editor/TransportBar";
 import { useAppState } from "../state/AppStateProvider";
-import { EditorStateProvider } from "../state/EditorStateProvider";
+import { EditorStateProvider, useEditorState } from "../state/EditorStateProvider";
+import { AudioEngineConnector } from "../audio/AudioEngineConnector";
+import type { TransportState } from "../state/types";
+
+function EditorContent() {
+  const { session, setPlayheadBar, setTransportState } = useEditorState();
+
+  const handlePlayheadChange = useCallback(
+    (bar: number) => setPlayheadBar(bar),
+    [setPlayheadBar],
+  );
+
+  const handleTransportChange = useCallback(
+    (state: TransportState) => setTransportState(state),
+    [setTransportState],
+  );
+
+  return (
+    <AudioEngineConnector
+      session={session}
+      onPlayheadChange={handlePlayheadChange}
+      onTransportChange={handleTransportChange}
+    />
+  );
+}
 
 export function EditorShell() {
   const navigate = useNavigate();
@@ -25,24 +45,26 @@ export function EditorShell() {
     return <Navigate to="/" replace />;
   }
 
+  const handleSessionChange = (nextSession: typeof session) => {
+    updateSession(projectId, nextSession);
+  };
+
+  const handleRenameProject = (name: string) => {
+    renameProject(projectId, name);
+  };
+
   return (
     <EditorStateProvider
       session={session}
-      onSessionChange={(nextSession) => updateSession(projectId, nextSession)}
+      onSessionChange={handleSessionChange}
     >
       <main className="screen editor-screen">
         <EditorTopBar
           project={project}
           onBack={() => navigate("/")}
-          onRenameProject={(name) => renameProject(projectId, name)}
+          onRenameProject={handleRenameProject}
         />
-        <TransportBar />
-        <section className="editor-workspace">
-          <TrackHeaderPane />
-          <TimelineViewport />
-          <RightPanelHost />
-        </section>
-        <BottomPanelHost />
+        <EditorContent />
       </main>
     </EditorStateProvider>
   );

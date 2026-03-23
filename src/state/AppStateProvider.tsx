@@ -7,206 +7,365 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-import { demoProjects, demoSessions } from "./demoData";
-import type { ProjectSession, ProjectSummary } from "./types";
+import { useRepository } from "../data";
+import type { ProjectSession, ProjectSummary, Track, Clip, CommentThread } from "./types";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+  CreateTrackInput,
+  UpdateTrackInput,
+  CreateClipInput,
+  UpdateClipInput,
+  CreateCommentInput,
+  UpdateCommentInput,
+} from "../data";
 
-const STORAGE_KEY = "opendaw-app-state";
-
-type PersistedAppState = {
-  projects: ProjectSummary[];
-  sessions: Record<string, ProjectSession>;
-};
+// ============================================================================
+// App State Types
+// ============================================================================
 
 type AppStateValue = {
+  // Data (synchronous access from cache)
   projects: ProjectSummary[];
+  isLoading: boolean;
+  error: Error | null;
+
+  // Project CRUD (sync from cache, async to repository)
   getProjectById: (projectId: string) => ProjectSummary | undefined;
   getSessionByProjectId: (projectId: string) => ProjectSession | undefined;
-  createProject: () => string;
-  updateSession: (projectId: string, session: ProjectSession) => void;
-  renameProject: (projectId: string, name: string) => void;
+  createProject: (input?: CreateProjectInput) => Promise<string>;
+  renameProject: (projectId: string, name: string) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
+  updateSession: (projectId: string, session: ProjectSession) => Promise<void>;
+
+  // Track CRUD
+  createTrack: (projectId: string, input: CreateTrackInput) => Promise<Track | null>;
+  updateTrack: (projectId: string, trackId: string, input: UpdateTrackInput) => Promise<Track | null>;
+  deleteTrack: (projectId: string, trackId: string) => Promise<void>;
+  reorderTracks: (projectId: string, trackIds: string[]) => Promise<void>;
+
+  // Clip CRUD
+  createClip: (projectId: string, input: CreateClipInput) => Promise<Clip | null>;
+  updateClip: (projectId: string, clipId: string, input: UpdateClipInput) => Promise<Clip | null>;
+  deleteClip: (projectId: string, clipId: string) => Promise<void>;
+
+  // Comment CRUD
+  createComment: (projectId: string, input: CreateCommentInput) => Promise<CommentThread | null>;
+  updateComment: (projectId: string, commentId: string, input: UpdateCommentInput) => Promise<CommentThread | null>;
+  deleteComment: (projectId: string, commentId: string) => Promise<void>;
+
+  // Refresh
+  refresh: () => Promise<void>;
 };
 
 const AppStateContext = createContext<AppStateValue | null>(null);
 
-function createDefaultState(): PersistedAppState {
-  return {
-    projects: demoProjects,
-    sessions: demoSessions,
-  };
-}
-
-function loadInitialState(): PersistedAppState {
-  const fallback = createDefaultState();
-
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (!raw) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(raw) as PersistedAppState;
-  } catch {
-    return fallback;
-  }
-}
-
-function formatUpdatedAt() {
-  return `Updated ${new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-}
+// ============================================================================
+// Provider
+// ============================================================================
 
 export function AppStateProvider({ children }: PropsWithChildren) {
-  const [state, setState] = useState<PersistedAppState>(() => loadInitialState());
+  const repository = useRepository();
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [sessions, setSessions] = useState<Record<string, ProjectSession>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
+  // Initial load
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    let mounted = true;
 
+    async function load() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await repository.loadAll();
+
+        if (mounted) {
+          setProjects(data.projects);
+          setSessions(data.sessions);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [repository]);
+
+  // Project CRUD (sync from cache, async to repository)
   const getProjectById = useCallback(
-    (projectId: string) => state.projects.find((project) => project.id === projectId),
-    [state.projects],
+    (projectId: string) => projects.find((p) => p.id === projectId),
+    [projects],
   );
 
   const getSessionByProjectId = useCallback(
-    (projectId: string) => state.sessions[projectId],
-    [state.sessions],
+    (projectId: string) => sessions[projectId],
+    [sessions],
   );
 
-  const updateSession = useCallback((projectId: string, session: ProjectSession) => {
-    setState((current) => ({
-      ...current,
-      projects: current.projects.map((project) =>
-        project.id === projectId
-          ? { ...project, updatedAt: formatUpdatedAt() }
-          : project,
-      ),
-      sessions: {
-        ...current.sessions,
-        [projectId]: session,
-      },
-    }));
-  }, []);
+  const createProject = useCallback(
+    async (input?: CreateProjectInput) => {
+      const project = await repository.createProject(input ?? {});
+      const session = await repository.getSession(project.id);
 
-  const renameProject = useCallback((projectId: string, name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
-    }
+      setProjects((prev) => [project, ...prev]);
+      if (session) {
+        setSessions((prev) => ({ ...prev, [project.id]: session }));
+      }
 
-    setState((current) => ({
-      ...current,
-      projects: current.projects.map((project) =>
-        project.id === projectId
-          ? {
-              ...project,
-              name: trimmed,
-              updatedAt: formatUpdatedAt(),
-            }
-          : project,
-      ),
-    }));
-  }, []);
+      return project.id;
+    },
+    [repository],
+  );
 
-  const createProject = useCallback(() => {
-    const projectId = `project-${crypto.randomUUID().slice(0, 8)}`;
+  const renameProject = useCallback(
+    async (projectId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
 
-    setState((current) => {
-      const newProject: ProjectSummary = {
-        id: projectId,
-        name: `Untitled Session ${current.projects.length + 1}`,
-        owner: "probees1492",
-        collaborators: "0 collaborators",
-        updatedAt: formatUpdatedAt(),
-        status: "Draft",
-        summary: "Fresh arrangement workspace ready for clips, comments, and export.",
-      };
+      const updated = await repository.updateProject(projectId, { name: trimmed });
+      if (updated) {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === projectId ? updated : p)),
+        );
+      }
+    },
+    [repository],
+  );
 
-      const newSession: ProjectSession = {
-        projectId,
-        tempo: 120,
-        timeSignature: "4/4",
-        playhead: "1.1.000",
-        playheadBar: 1,
-        transport: "stopped",
-        loopRange: {
-          start: 1,
-          end: 5,
-          enabled: false,
-        },
-        tracks: [
-          {
-            id: `${projectId}-track-audio`,
-            name: "Audio Track",
-            type: "Audio",
-            color: "amber",
-            muted: false,
-            solo: false,
-            clips: [
-              {
-                id: `${projectId}-clip-audio`,
-                name: "New Audio Idea",
-                start: 0.5,
-                length: 1.5,
-                color: "sun",
-              },
-            ],
-          },
-          {
-            id: `${projectId}-track-midi`,
-            name: "MIDI Track",
-            type: "MIDI",
-            color: "cyan",
-            muted: false,
-            solo: false,
-            clips: [
-              {
-                id: `${projectId}-clip-midi`,
-                name: "Chord Sketch",
-                start: 2,
-                length: 2,
-                color: "cyan",
-              },
-            ],
-          },
-        ],
-        comments: [],
-      };
+  const deleteProject = useCallback(
+    async (projectId: string) => {
+      const success = await repository.deleteProject(projectId);
+      if (success) {
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        setSessions((prev) => {
+          const next = { ...prev };
+          delete next[projectId];
+          return next;
+        });
+      }
+    },
+    [repository],
+  );
 
-      return {
-        projects: [newProject, ...current.projects],
-        sessions: {
-          ...current.sessions,
-          [projectId]: newSession,
-        },
-      };
-    });
+  const updateSession = useCallback(
+    async (projectId: string, session: ProjectSession) => {
+      await repository.saveSession(projectId, session);
+      setSessions((prev) => ({ ...prev, [projectId]: session }));
 
-    return projectId;
-  }, []);
+      // Update project timestamp
+      const project = await repository.getProject(projectId);
+      if (project) {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === projectId ? project : p)),
+        );
+      }
+    },
+    [repository],
+  );
 
+  // Track CRUD
+  const createTrack = useCallback(
+    async (projectId: string, input: CreateTrackInput) => {
+      const track = await repository.createTrack(projectId, input);
+      if (track) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return track;
+    },
+    [repository],
+  );
+
+  const updateTrack = useCallback(
+    async (projectId: string, trackId: string, input: UpdateTrackInput) => {
+      const track = await repository.updateTrack(projectId, trackId, input);
+      if (track) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return track;
+    },
+    [repository],
+  );
+
+  const deleteTrack = useCallback(
+    async (projectId: string, trackId: string) => {
+      const success = await repository.deleteTrack(projectId, trackId);
+      if (success) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+    },
+    [repository],
+  );
+
+  const reorderTracks = useCallback(
+    async (projectId: string, trackIds: string[]) => {
+      const success = await repository.reorderTracks(projectId, trackIds);
+      if (success) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+    },
+    [repository],
+  );
+
+  // Clip CRUD
+  const createClip = useCallback(
+    async (projectId: string, input: CreateClipInput) => {
+      const clip = await repository.createClip(projectId, input);
+      if (clip) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return clip;
+    },
+    [repository],
+  );
+
+  const updateClip = useCallback(
+    async (projectId: string, clipId: string, input: UpdateClipInput) => {
+      const clip = await repository.updateClip(projectId, clipId, input);
+      if (clip) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return clip;
+    },
+    [repository],
+  );
+
+  const deleteClip = useCallback(
+    async (projectId: string, clipId: string) => {
+      const success = await repository.deleteClip(projectId, clipId);
+      if (success) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+    },
+    [repository],
+  );
+
+  // Comment CRUD
+  const createComment = useCallback(
+    async (projectId: string, input: CreateCommentInput) => {
+      const comment = await repository.createComment(projectId, input);
+      if (comment) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return comment;
+    },
+    [repository],
+  );
+
+  const updateComment = useCallback(
+    async (projectId: string, commentId: string, input: UpdateCommentInput) => {
+      const comment = await repository.updateComment(projectId, commentId, input);
+      if (comment) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+      return comment;
+    },
+    [repository],
+  );
+
+  const deleteComment = useCallback(
+    async (projectId: string, commentId: string) => {
+      const success = await repository.deleteComment(projectId, commentId);
+      if (success) {
+        const session = await repository.getSession(projectId);
+        if (session) {
+          setSessions((prev) => ({ ...prev, [projectId]: session }));
+        }
+      }
+    },
+    [repository],
+  );
+
+  // Refresh
+  const refresh = useCallback(async () => {
+    const data = await repository.loadAll();
+    setProjects(data.projects);
+    setSessions(data.sessions);
+  }, [repository]);
+
+  // Memoized value
   const value = useMemo<AppStateValue>(
     () => ({
-      projects: state.projects,
+      projects,
+      isLoading,
+      error,
       getProjectById,
       getSessionByProjectId,
       createProject,
-      updateSession,
       renameProject,
+      deleteProject,
+      updateSession,
+      createTrack,
+      updateTrack,
+      deleteTrack,
+      reorderTracks,
+      createClip,
+      updateClip,
+      deleteClip,
+      createComment,
+      updateComment,
+      deleteComment,
+      refresh,
     }),
     [
-      createProject,
+      projects,
+      isLoading,
+      error,
       getProjectById,
       getSessionByProjectId,
+      createProject,
       renameProject,
-      state.projects,
+      deleteProject,
       updateSession,
+      createTrack,
+      updateTrack,
+      deleteTrack,
+      reorderTracks,
+      createClip,
+      updateClip,
+      deleteClip,
+      createComment,
+      updateComment,
+      deleteComment,
+      refresh,
     ],
   );
 
@@ -214,6 +373,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
   );
 }
+
+// ============================================================================
+// Hook
+// ============================================================================
 
 export function useAppState() {
   const context = useContext(AppStateContext);
